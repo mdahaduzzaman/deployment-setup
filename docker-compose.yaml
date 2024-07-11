@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+    container_name: backend
+    volumes:
+      - static_volume:/backend/static
+      - media_volume:/backend/media
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    environment:
+      - VITE_BACKEND_URL=http://127.0.0.1:8000/api
+    volumes:
+      - react_build:/frontend/dist
+    depends_on:
+      - backend
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx
+    volumes:
+      - react_build:/usr/share/nginx/html
+      - static_volume:/backend/static
+      - media_volume:/backend/media
+    ports:
+      - "80:80"
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  static_volume:
+  media_volume:
+  react_build:
