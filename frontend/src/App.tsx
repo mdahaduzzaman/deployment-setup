@@ -1,55 +1,97 @@
-import { useEffect, useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+import { useState } from "react";
+import axios from "axios";
 import "./App.css";
 
+interface Book {
+  name: string;
+  image: File | null;
+}
+const API_URL = "http://127.0.0.1:8000/api";
+
 function App() {
-  const [count, setCount] = useState(0);
+  const [books, setBooks] = useState<Book[]>([
+    {
+      name: "",
+      image: null,
+    },
+  ]);
 
-  const API_URL = import.meta.env.VITE_BACKEND_URL;
+  const handleAddBook = () => {
+    setBooks([...books, { name: "", image: null }]);
+  };
 
-  console.log(import.meta.env);
-  console.log(API_URL);
+  const handleChange = (index: number, field: string, value: any) => {
+    const newBooks = books.slice();
+    newBooks[index] = { ...newBooks[index], [field]: value };
+    setBooks(newBooks);
+  };
 
-  useEffect(()=>{
-    fetch(`${API_URL}/persons/`)
-    .then((response) => response.json())
-    .then((data) => {
-      // Process the data as needed
-      console.log(data);
-    })
-    .catch((error) => {
-      console.error("Error fetching data:", error);
-    });
-  }, [])
-  
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      await bulkCreateBooks(books);
+      alert("Books created successfully!");
+    } catch (error) {
+      alert("Error creating books.");
+    }
+  };
+
   return (
-    <>
-      {API_URL}
-      <br />
-      {JSON.stringify(import.meta.env)}
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <form onSubmit={handleSubmit}>
+      {books.map((book, index) => (
+        <div key={index} className="p-5 m-5 bg-gray-500">
+          <input
+            type="text"
+            className="border w-full"
+            placeholder="Name"
+            value={book.name}
+            onChange={(e) => handleChange(index, "name", e.target.value)}
+          />
+          <input
+            type="file"
+            onChange={(e) => {
+              if (e.target.files) {
+                handleChange(index, "image", e.target.files[0]);
+              }
+            }}
+          />
+        </div>
+      ))}
+      <button type="button" onClick={handleAddBook} className="bg-green-600 m-5  px-5 py-1">
+        Add Book
+      </button>
+      <button type="submit" className="bg-red-500 m-5 px-5 py-1">Submit</button>
+    </form>
   );
 }
 
 export default App;
+
+const bulkCreateBooks = async (books: Book[]) => {
+  const formData = new FormData();
+
+  books.forEach((book, index) => {
+    formData.append(`books[${index}][name]`, book.name);
+    if (book.image) {
+      formData.append(`books[${index}][image]`, book.image);
+    } else {
+      formData.append(`books[${index}][image]`, "");
+    }
+  });
+
+  try {
+    const response = await axios.post(
+      `${API_URL}/persons/bulk-create/`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error creating books:", error);
+    throw error;
+  }
+};
